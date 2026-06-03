@@ -1,0 +1,74 @@
+/* Self-hosted Orbitron (variable weight) added under src/font.
+   Vite fingerprints and bundles the asset from this relative URL. */
+@font-face {
+  font-family: 'Orbitron';
+  src: url('./font/Orbitron-VariableFont_wght.ttf') format('truetype');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0c0d10;
+  --panel: #15171c;
+  --panel-2: #1c1f26;
+  --border: #2a2e38;
+  --text: #e7e9ee;
+  --muted: #8b91a0;
+  --accent: #c81e2c;
+  --accent-2: #7a0f17;
+  --good: #2ecc71;
+  --warn: #e0a800;
+  --font-tech: 'Orbitron', sans-serif;
+  --font-ui: 'Chakra Petch', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* The overlay route is transparent so OBS composites it over the game feed. */
+body.overlay-mode {
+  background: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: var(--font-ui);
+  cursor: pointer;
+}
+
+input,
+select {
+  font-family: var(--font-ui);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
