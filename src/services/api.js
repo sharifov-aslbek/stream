@@ -1,8 +1,13 @@
 import axios from 'axios'
 
-// Empty base => same origin (the Vite dev proxy forwards /api to the backend,
-// and in production the app is served from the same host as the API).
-const BASE = import.meta.env.VITE_API_BASE || ''
+// Where the backend actually lives.
+const BACKEND_ORIGIN = 'https://dato.statistikam.uz'
+
+// In dev, an empty base lets the Vite proxy forward /api same-origin (no CORS).
+// In a production build (e.g. Netlify) there is no proxy, so we must hit the
+// backend directly. VITE_API_BASE still overrides both when set.
+const BASE =
+  import.meta.env.VITE_API_BASE || (import.meta.env.PROD ? BACKEND_ORIGIN : '')
 
 const http = axios.create({
   baseURL: BASE,
@@ -12,7 +17,7 @@ const http = axios.create({
 // Origin that actually serves the uploaded images. Unlike REST/socket (which go
 // through the dev proxy via an empty BASE), uploaded logos must resolve to a real
 // host so they also load outside the dev server (e.g. an OBS browser source).
-const ASSET_BASE = import.meta.env.VITE_ASSET_BASE || 'https://dato.statistikam.uz'
+const ASSET_BASE = import.meta.env.VITE_ASSET_BASE || BACKEND_ORIGIN
 
 // Turn a relative logoUrl ("/api/uploads/x.png") into an absolute URL so it loads
 // regardless of where the overlay page itself is hosted.
