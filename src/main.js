@@ -3,6 +3,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import App from './App.vue'
 import Dashboard from './views/Dashboard.vue'
 import Overlay from './views/Overlay.vue'
+import SnakeDemo from './views/SnakeDemo.vue'
 import './style.css'
 
 const router = createRouter({
@@ -13,6 +14,7 @@ const router = createRouter({
     { path: '/', redirect: '/dashboard' },
     { path: '/dashboard', name: 'dashboard', component: Dashboard },
     { path: '/overlay', name: 'overlay', component: Overlay },
+    { path: '/snake', name: 'snake', component: SnakeDemo },
   ],
 })
 

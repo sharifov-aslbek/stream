@@ -31,12 +31,13 @@ async function remove(poll) {
   emit('changed')
 }
 
-async function activate(poll) {
-  await api.activatePoll(poll.id)
-  emit('changed')
-}
-async function deactivate(poll) {
-  await api.deactivatePoll(poll.id)
+// isActive is driven by the activate/deactivate endpoints — there is no PUT to
+// set the flag directly, so the select maps each choice onto the right call.
+async function setActive(poll, value) {
+  const next = value === 'true'
+  if (next === poll.isActive) return
+  if (next) await api.activatePoll(poll.id)
+  else await api.deactivatePoll(poll.id)
   emit('changed')
 }
 </script>
@@ -62,8 +63,15 @@ async function deactivate(poll) {
           <span class="name">{{ p.title }}</span>
         </div>
         <div class="actions" @click.stop>
-          <button v-if="!p.isActive" class="ghost" @click="activate(p)">Activate</button>
-          <button v-else class="ghost warn" @click="deactivate(p)">Deactivate</button>
+          <select
+            class="active-select"
+            :class="{ on: p.isActive }"
+            :value="String(p.isActive)"
+            @change="setActive(p, $event.target.value)"
+          >
+            <option value="true">Active: true</option>
+            <option value="false">Active: false</option>
+          </select>
           <button class="ghost danger" @click="remove(p)">✕</button>
         </div>
       </li>
@@ -145,7 +153,22 @@ h2 {
 }
 .actions {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex: none;
+}
+.active-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+.active-select.on {
+  color: var(--good);
+  border-color: var(--good);
 }
 </style>

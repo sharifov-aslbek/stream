@@ -121,6 +121,14 @@ function chosenItem(participant) {
   return participant.pollItemId ? itemsById.value.get(participant.pollItemId) : null
 }
 
+// The team image to portray on a participant card: their assigned team, or —
+// when none is assigned yet — the leading team from the matchup ("comparing")
+// card, so the participant card always mirrors an image standing in the
+// comparison instead of falling back to the empty spider.
+function participantTeam(participant) {
+  return chosenItem(participant) || winnerItem.value
+}
+
 function score(item) {
   return scoreValue(item)
 }
@@ -154,7 +162,6 @@ function keyword(item) {
               class="mark"
               :class="{ winnerMark: isWinner(team) }"
               :url="team.logoUrl"
-              :badge="score(team)"
               :size="58"
             />
           </template>
@@ -174,18 +181,9 @@ function keyword(item) {
               <LogoBadge
                 class="mark"
                 :class="{ winnerMark: isWinner(chosenItem(p)) }"
-                :url="p.logoUrl"
+                :url="participantTeam(p)?.logoUrl || p.logoUrl"
                 :size="54"
               />
-
-              <LogoBadge
-                v-if="chosenItem(p)"
-                class="team-chip"
-                :url="chosenItem(p).logoUrl"
-                :size="22"
-              />
-
-              <span v-if="chosenItem(p)" class="score-ball">{{ score(chosenItem(p)) }}</span>
             </div>
           </Transition>
         </div>
@@ -208,8 +206,7 @@ function keyword(item) {
               class="mark bottomMark"
               :class="{ winnerMark: isWinner(teamA) }"
               :url="teamA?.logoUrl"
-              :badge="score(teamA)"
-              :size="46"
+              :size="72"
             />
           </Transition>
           
@@ -223,8 +220,7 @@ function keyword(item) {
               class="mark bottomMark"
               :class="{ winnerMark: isWinner(teamB) }"
               :url="teamB?.logoUrl"
-              :badge="score(teamB)"
-              :size="46"
+              :size="72"
             />
           </Transition>
           
@@ -286,7 +282,8 @@ function keyword(item) {
 .cards {
   position: absolute;
   left: 120px;
-  bottom: 200px;
+  /* 12.69px gap above the bottom banner (banner top = 78 + 132 = 210px) */
+  bottom: 222.69px;
   display: flex;
   align-items: stretch; /* Stretches cards to match layout height perfectly */
   gap: 12px;
@@ -329,7 +326,8 @@ function keyword(item) {
 }
 
 .matchup {
-  min-width: 340px;
+  width: 269px;
+  background: url('../assets/comparing-card.png') center / 100% 100% no-repeat;
 }
 .matchup .card-body {
   gap: 26px;
@@ -358,7 +356,7 @@ function keyword(item) {
   justify-content: center;
   gap: 16px;
   padding: 16px 22px;
-  height: 96px;
+  height: 105px;
   box-sizing: border-box;
 }
 .vs {
@@ -374,9 +372,13 @@ function keyword(item) {
 }
 
 /* Participant Layout: Locked completely edge-to-edge inside the exact height mask */
+.card.participant {
+  width: 127px;
+  background: url('../assets/participants-bg.png') center / 100% 100% no-repeat;
+}
 .card.participant .card-body {
   padding: 0;
-  height: 96px;
+  height: 105px;           /* Match the comparing (matchup) card height */
   box-sizing: border-box;
   overflow: hidden;        /* Clones bounds clipping to stop image bursting */
   border-radius: inherit;  /* Follows base card border-radius smoothly */
@@ -384,18 +386,17 @@ function keyword(item) {
 .photo-wrap {
   position: relative;
   display: inline-flex;
+  align-items: center;     /* Center the logo inside the card... */
+  justify-content: center; /* ...instead of stretching it edge-to-edge */
   line-height: 0;
-  width: 96px;
+  width: 100%;
   height: 100%;
   overflow: hidden;        /* Dual layout mask for custom image scaling layers */
 }
 
-/* Force inner graphic tokens inside LogoBadge to scale safely without spilling */
-.photo-wrap :deep(.mark),
+/* Keep the logo contained at its natural badge size (not bursting the frame) */
 .photo-wrap :deep(img) {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important; /* Forces layout scaling to fit profile frame gracefully */
+  object-fit: contain !important;
 }
 
 .team-chip {
@@ -446,17 +447,18 @@ function keyword(item) {
   gap: 16px;
 }
 .facecam {
-  width: 215px;
-  height: 120px;
+  width: 172px;
+  height: 132px;
   background: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   border-radius: 4px;
 }
 .votebar {
   position: relative;
-  height: 120px;
-  min-width: 1020px;
+  width: 1366px;
+  height: 132px;
   overflow: hidden;
+  background: url('../assets/long-banner-bottom.png') center / 100% 100% no-repeat;
   animation: bar-slide 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
 }
 .votebar-fill {
@@ -470,32 +472,31 @@ function keyword(item) {
   height: 100%;
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 0 40px;
+  justify-content: space-between; /* Spread the text edge-to-edge across the banner */
+  gap: 16px;
+  padding: 0 48px;
 }
 .vote-label {
-  font-size: 34px;
+  font-size: 56px;
   font-weight: 900;
   letter-spacing: 1px;
-  margin-right: 14px;
 }
 .pct {
-  font-size: 38px;
+  font-size: 56px;
   font-weight: 800;
-  min-width: 110px;
   text-align: center;
 }
 .team {
-  font-size: 30px;
+  font-size: 52px;
   font-weight: 800;
   letter-spacing: 1px;
-  max-width: 220px;
+  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .vs.big {
-  font-size: 34px;
+  font-size: 60px;
   margin: 0 4px;
 }
 
