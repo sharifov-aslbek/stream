@@ -64,7 +64,7 @@ async function remove(p) {
     <div class="grid">
       <div v-for="p in participants" :key="p.id" class="card">
         <button class="ghost danger x" @click="remove(p)">✕</button>
-        <LogoBadge :url="p.logoUrl" :size="46" class="ib" />
+        <LogoBadge v-if="p.logoUrl" :url="p.logoUrl" :size="46" class="ib" />
         <strong class="pname">{{ p.participantName }}</strong>
         <select :value="p.pollItemId ?? ''" @change="setVote(p, $event)">
           <option value="">— not voted —</option>

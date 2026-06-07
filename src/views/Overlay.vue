@@ -120,6 +120,16 @@ const rankedItems = computed(() =>
 )
 const winnerItem = computed(() => rankedItems.value[0] || null)
 
+// Participant cards must keep a STABLE row order. The backend may return
+// participants in a different order once someone votes; if we rendered that
+// order directly, the keyed TransitionGroup would re-seat cards (a positional
+// slide) on a mere team change. Pinning by id means a vote only flips the
+// in-card logo snake — the row itself never moves. New participants still
+// append in id order and animate in via the cardflow enter (rise).
+const orderedParticipants = computed(() =>
+  [...data.value.participants].sort((a, b) => a.id - b.id)
+)
+
 const itemsById = computed(() => {
   const m = new Map()
   for (const it of data.value.items) m.set(it.id, it)
@@ -190,7 +200,7 @@ const chatChoice = computed(() => {
 
 <template>
   <div class="overlay" :class="{ inactive: !data.isActive && data.phase !== 'results' }">
-    <TransitionGroup name="cardflow" tag="div" class="cards">
+    <TransitionGroup name="cardflow" tag="div" class="cards" appear>
 
       <div class="card matchup" key="matchup">
         <div class="card-tab">{{ data.pollTitle || 'NEXUSPOLL' }}</div>
@@ -200,20 +210,20 @@ const chatChoice = computed(() => {
             class="mark"
             :class="{ winnerMark: isWinner(teamA) }"
             :url="teamA?.logoUrl"
-            :size="58"
+            :size="66"
           />
           <span class="vs">X</span>
           <LogoBadge
             class="mark"
             :class="{ winnerMark: isWinner(teamB) }"
             :url="teamB?.logoUrl"
-            :size="58"
+            :size="66"
           />
         </div>
       </div>
 
       <div
-        v-for="p in data.participants"
+        v-for="p in orderedParticipants"
         :key="p.id"
         class="card participant"
         :class="[`choice-${choiceSide(p) || 'none'}`, { voted: !!choiceSide(p), winner: isWinner(chosenItem(p)) }]"
@@ -221,11 +231,11 @@ const chatChoice = computed(() => {
         <div class="pname">{{ p.participantName }}</div>
         <div class="pbody">
           <div class="pslot slot-left">
-            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="58" />
+            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="66" />
           </div>
           <span class="pdivider"></span>
           <div class="pslot slot-right">
-            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="58" />
+            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="66" />
           </div>
         </div>
       </div>
@@ -240,11 +250,11 @@ const chatChoice = computed(() => {
         <div class="pname">CHAT</div>
         <div class="pbody">
           <div class="pslot slot-left">
-            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="58" />
+            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="66" />
           </div>
           <span class="pdivider"></span>
           <div class="pslot slot-right">
-            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="58" />
+            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="66" />
           </div>
         </div>
       </div>
@@ -322,7 +332,7 @@ const chatChoice = computed(() => {
 }
 .overlay.inactive {
   opacity: 0;
-  transition: opacity 0.4s;
+  transition: opacity 2.4s;
 }
 
 /* Optional background matching production stage canvas */
@@ -335,7 +345,7 @@ const chatChoice = computed(() => {
 .votebar {
   background: linear-gradient(135deg, #7a0718 0%, #940a23 100%);
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6);
-  border-radius: 4px;
+  border-radius: 0;
 }
 
 /* ===================== Top cards ===================== */
@@ -359,20 +369,27 @@ const chatChoice = computed(() => {
   background: linear-gradient(90deg, transparent, rgba(255, 80, 98, 0.2), transparent);
   filter: blur(16px);
   opacity: 0.7;
-  animation: card-light-pass 6s ease-in-out infinite;
+  animation: card-light-pass 8s ease-in-out infinite;
 }
 .card {
   position: relative;
-  /* slower bottom→top rise; `backwards` holds the start frame so there's no
-     pre-animation flash/jump */
-  animation: card-rise 1.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-  transition: filter 0.35s ease;
+  transition: filter 2.35s ease;
   z-index: 1;
 }
-.card:nth-child(2) { animation-delay: 0.18s; }
-.card:nth-child(3) { animation-delay: 0.36s; }
-.card:nth-child(4) { animation-delay: 0.54s; }
-.card:nth-child(5) { animation-delay: 0.72s; }
+/* Bottom→top rise ONLY when a card actually enters the row — i.e. the initial
+   load (appear) or a brand-new participant being added. An in-place update like
+   a vote/team change never gets these classes, so it never rises; it just plays
+   the horizontal logo snake. `backwards` holds the start frame (no pre-anim flash). */
+.cardflow-enter-active,
+.cardflow-appear-active {
+  animation: card-rise 3.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+/* Stagger only the initial appear so the row cascades in; a single added card
+   rises immediately with no delay. */
+.cardflow-appear-active:nth-child(2) { animation-delay: 0.18s; }
+.cardflow-appear-active:nth-child(3) { animation-delay: 0.36s; }
+.cardflow-appear-active:nth-child(4) { animation-delay: 0.54s; }
+.cardflow-appear-active:nth-child(5) { animation-delay: 0.72s; }
 
 .card.winner {
   filter: drop-shadow(0 0 18px rgba(255, 80, 98, 0.55));
@@ -383,7 +400,7 @@ const chatChoice = computed(() => {
   inset: 0;
   border: 2px solid rgba(255, 255, 255, 0.38);
   opacity: 0.65;
-  animation: winner-frame 2s ease-in-out infinite;
+  animation: winner-frame 4s ease-in-out infinite;
   pointer-events: none;
   border-radius: inherit;
 }
@@ -430,7 +447,7 @@ const chatChoice = computed(() => {
 }
 .mark {
   flex: none;
-  transition: filter 0.35s ease;
+  transition: filter 2.35s ease;
 }
 .winnerMark {
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
@@ -447,7 +464,7 @@ const chatChoice = computed(() => {
   height: 105px;
   /* Same crimson texture as the comparing card */
   background: url('../assets/participants-bg.png') center / 100% 100% no-repeat;
-  border-radius: 4px;
+  border-radius: 0;
   overflow: hidden;             /* clips the big logos at both edges + the exiting loser */
   display: flex;
   flex-direction: column;
@@ -488,14 +505,14 @@ const chatChoice = computed(() => {
   /* Slow, steady "walk" glide. transform and opacity share the SAME duration and
      easing so the loser fades exactly as it finishes travelling — no early cut,
      no break in the motion. ease-in-out gives the smooth start/stop of a walk. */
-  transition: transform 2.4s ease-in-out, opacity 2.4s ease-in-out;
+  transition: transform 4.4s ease-in-out, opacity 4.4s ease-in-out;
 }
 .pdivider {
   width: 1px;
   align-self: stretch;
   margin: 16px 0;
   background: rgba(255, 255, 255, 0.28);
-  transition: opacity 0.35s ease;
+  transition: opacity 2.35s ease;
 }
 
 /* Voted: divider gone, winner glides to the centre, loser slides out right. */
@@ -576,7 +593,7 @@ const chatChoice = computed(() => {
   height: 132px;
   background: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
-  border-radius: 4px;
+  border-radius: 0;
 }
 .votebar {
   position: relative;
@@ -584,13 +601,13 @@ const chatChoice = computed(() => {
   height: 132px;
   overflow: hidden;
   background: url('../assets/long-banner-bottom.png') center / 100% 100% no-repeat;
-  animation: bar-slide 2.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+  animation: bar-slide 4.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
 }
 .votebar-fill {
   position: absolute;
   inset: 0 auto 0 0;
   background: linear-gradient(90deg, rgba(255, 80, 98, 0.5), rgba(183, 24, 38, 0));
-  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 2.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .votebar-content {
   position: relative;
@@ -653,7 +670,7 @@ const chatChoice = computed(() => {
 }
 .flash-enter-active,
 .flash-leave-active {
-  transition: all 0.35s ease;
+  transition: all 2.35s ease;
 }
 .flash-enter-from,
 .flash-leave-to {
@@ -666,10 +683,10 @@ const chatChoice = computed(() => {
    the gap with no jump; a newly added card still rises in via card-rise, and a
    removed one fades out without snapping the row. */
 .cardflow-move {
-  transition: transform 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 3.8s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .cardflow-leave-active {
-  transition: opacity 0.8s ease, transform 0.8s ease;
+  transition: opacity 2.8s ease, transform 2.8s ease;
   position: absolute;
 }
 .cardflow-leave-to {
@@ -679,11 +696,11 @@ const chatChoice = computed(() => {
 
 .team-swap-move {
   /* same slow "walk" pace as the participant card snake animation */
-  transition: transform 2.4s ease-in-out;
+  transition: transform 4.4s ease-in-out;
 }
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.25s ease;
+  transition: opacity 2.25s ease;
 }
 .fade-enter-from,
 .fade-leave-to {
