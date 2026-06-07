@@ -63,6 +63,18 @@ export const api = {
   simulateVote: (authorName, message) =>
     http.post('/api/chat/simulate-vote', { authorName, message }).then((r) => r.data),
 
+  // ---- Results ----
+  getResults: (pollId) => http.get(`/api/polls/${pollId}/results`).then((r) => r.data),
+  // Export is a file download (Content-Disposition), so we hand back an absolute
+  // URL the browser can navigate to / open in a new tab rather than fetching it
+  // as JSON. BASE is empty in dev (proxy handles same-origin) and the backend
+  // origin in production.
+  exportResultsUrl: (pollId, format = 'csv') =>
+    `${BASE}/api/polls/${pollId}/results/export?format=${encodeURIComponent(format)}`,
+
   // ---- Overlay ----
   getOverlay: () => http.get('/api/overlay').then((r) => r.data),
+
+  // ---- Health ----
+  health: () => http.get('/api/healthz').then((r) => r.data),
 }

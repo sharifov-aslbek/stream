@@ -14,9 +14,10 @@ const DEMO = {
     { id: 2, name: 'G', displayName: 'iG', logoUrl: '', chatPercentage: 100, streamVotesCount: 4 },
   ],
   participants: [
-    { id: 1, participantName: 'ZAKI', pollItemId: 1, logoUrl: '' },
-    { id: 2, participantName: 'DEVICE', pollItemId: 1, logoUrl: '' },
-    { id: 3, participantName: 'CHAT', pollItemId: 2, logoUrl: '' },
+    { id: 1, participantName: 'ART1ST', pollItemId: null, logoUrl: '' },
+    { id: 2, participantName: 'SOLAAR', pollItemId: null, logoUrl: '' },
+    { id: 3, participantName: 'FRIEND444', pollItemId: 1, logoUrl: '' },
+    { id: 4, participantName: 'TOLL', pollItemId: null, logoUrl: '' },
   ],
   totalChatVotes: 0,
   recentVote: null,
@@ -56,7 +57,12 @@ onMounted(async () => {
   document.body.classList.add('overlay-mode')
 
   if (route.query.demo != null) {
-    data.value = DEMO
+    // ?demo&results previews the post-submit state (CHAT card collapses to the
+    // higher-scoring team — here team 1 / iF).
+    data.value =
+      route.query.results != null
+        ? { ...DEMO, isActive: false, phase: 'results', winnerItemId: 1 }
+        : DEMO
     return
   }
 
@@ -79,6 +85,9 @@ onMounted(async () => {
       })
     }),
     on('poll:status', () => refresh()),
+    // poll:ended carries the full results-phase payload directly; refresh() pulls
+    // the same shape from /api/overlay so the overlay flips to the results view.
+    on('poll:ended', () => refresh()),
     on('poll:reset', () => {
       recentFlash.value = null
       refresh()
@@ -121,6 +130,18 @@ function chosenItem(participant) {
   return participant.pollItemId ? itemsById.value.get(participant.pollItemId) : null
 }
 
+// Which side of the matchup a participant has committed to. teamA is the left
+// logo, teamB the right. Returns null while they're still undecided — that's
+// when the card keeps BOTH logos visible. Once they vote, the loser's logo
+// snakes out to the right and the chosen logo slides to the centre. Driven by
+// the live pollItemId, which arrives over the poll:vote / overlay socket.
+function choiceSide(participant) {
+  if (!participant.pollItemId) return null
+  if (participant.pollItemId === teamA.value?.id) return 'left'
+  if (participant.pollItemId === teamB.value?.id) return 'right'
+  return null
+}
+
 // The team image to portray on a participant card: their assigned team, or —
 // when none is assigned yet — the leading team from the matchup ("comparing")
 // card, so the participant card always mirrors an image standing in the
@@ -146,50 +167,89 @@ function keyword(item) {
   if (!item) return '—'
   return item.name.startsWith('!') ? item.name : `!${item.name}`
 }
+
+// ---------------------------------------------------------------------------
+// CHAT summary card (sits after the participants)
+// ---------------------------------------------------------------------------
+// Mirrors the two-logo participant layout, but its pick is decided by the poll
+// itself. While the poll is live it shows BOTH teams. Once the poll is submitted
+// (admin deactivates → phase "results"), the higher-scoring team snakes to the
+// centre and the other fades out — same animation as the participant cards.
+const submitted = computed(
+  () => data.value.phase === 'results' || data.value.showResults === true
+)
+const chatChoice = computed(() => {
+  if (!submitted.value || !teamA.value || !teamB.value) return null
+  const wid = data.value.winnerItemId
+  if (wid === teamA.value.id) return 'left'
+  if (wid === teamB.value.id) return 'right'
+  // fallback when the backend didn't flag a winner: compare live scores
+  return scoreValue(teamA.value) >= scoreValue(teamB.value) ? 'left' : 'right'
+})
 </script>
 
 <template>
-  <div class="overlay" :class="{ inactive: !data.isActive }">
-    <div class="cards">
-      
-      <div class="card matchup">
+  <div class="overlay" :class="{ inactive: !data.isActive && data.phase !== 'results' }">
+    <TransitionGroup name="cardflow" tag="div" class="cards">
+
+      <div class="card matchup" key="matchup">
         <div class="card-tab">{{ data.pollTitle || 'NEXUSPOLL' }}</div>
 
-        <TransitionGroup name="team-swap" tag="div" class="card-body">
-          <template v-for="(team, index) in rankedItems" :key="team.id">
-            <span v-if="index > 0" :key="`vs-${team.id}`" class="vs">X</span>
-            <LogoBadge
-              class="mark"
-              :class="{ winnerMark: isWinner(team) }"
-              :url="team.logoUrl"
-              :size="58"
-            />
-          </template>
-        </TransitionGroup>
+        <div class="card-body">
+          <LogoBadge
+            class="mark"
+            :class="{ winnerMark: isWinner(teamA) }"
+            :url="teamA?.logoUrl"
+            :size="58"
+          />
+          <span class="vs">X</span>
+          <LogoBadge
+            class="mark"
+            :class="{ winnerMark: isWinner(teamB) }"
+            :url="teamB?.logoUrl"
+            :size="58"
+          />
+        </div>
       </div>
 
       <div
         v-for="p in data.participants"
         :key="p.id"
         class="card participant"
-        :class="{ winner: isWinner(chosenItem(p)) }"
+        :class="[`choice-${choiceSide(p) || 'none'}`, { voted: !!choiceSide(p), winner: isWinner(chosenItem(p)) }]"
       >
-        <div class="card-tab">{{ p.participantName }}</div>
-        <div class="card-body">
-          <Transition name="fade" mode="out-in">
-            <div :key="`participant-${p.id}`" class="photo-wrap">
-              <LogoBadge
-                class="mark"
-                :class="{ winnerMark: isWinner(chosenItem(p)) }"
-                :url="participantTeam(p)?.logoUrl || p.logoUrl"
-                :size="54"
-              />
-            </div>
-          </Transition>
+        <div class="pname">{{ p.participantName }}</div>
+        <div class="pbody">
+          <div class="pslot slot-left">
+            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="58" />
+          </div>
+          <span class="pdivider"></span>
+          <div class="pslot slot-right">
+            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="58" />
+          </div>
         </div>
       </div>
-      
-    </div>
+
+      <!-- CHAT summary card: collapses to the higher-scoring team once submitted -->
+      <div
+        v-if="teamA && teamB"
+        key="chat"
+        class="card participant chat"
+        :class="[`choice-${chatChoice || 'none'}`, { voted: !!chatChoice }]"
+      >
+        <div class="pname">CHAT</div>
+        <div class="pbody">
+          <div class="pslot slot-left">
+            <LogoBadge class="mark" :url="teamA?.logoUrl" :size="58" />
+          </div>
+          <span class="pdivider"></span>
+          <div class="pslot slot-right">
+            <LogoBadge class="mark" :url="teamB?.logoUrl" :size="58" />
+          </div>
+        </div>
+      </div>
+
+    </TransitionGroup>
 
     <div class="bottom">
       <div class="facecam"></div>
@@ -285,7 +345,8 @@ function keyword(item) {
   /* 12.69px gap above the bottom banner (banner top = 78 + 132 = 210px) */
   bottom: 222.69px;
   display: flex;
-  align-items: stretch; /* Stretches cards to match layout height perfectly */
+  align-items: flex-end; /* Align all card bottoms; participant cards rise to the
+                            comparing card's full height (incl. its floating tab) */
   gap: 12px;
 }
 .cards::before {
@@ -302,14 +363,16 @@ function keyword(item) {
 }
 .card {
   position: relative;
-  animation: card-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  /* slower bottom→top rise; `backwards` holds the start frame so there's no
+     pre-animation flash/jump */
+  animation: card-rise 1.8s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   transition: filter 0.35s ease;
   z-index: 1;
 }
-.card:nth-child(2) { animation-delay: 0.1s; }
-.card:nth-child(3) { animation-delay: 0.2s; }
-.card:nth-child(4) { animation-delay: 0.3s; }
-.card:nth-child(5) { animation-delay: 0.4s; }
+.card:nth-child(2) { animation-delay: 0.18s; }
+.card:nth-child(3) { animation-delay: 0.36s; }
+.card:nth-child(4) { animation-delay: 0.54s; }
+.card:nth-child(5) { animation-delay: 0.72s; }
 
 .card.winner {
   filter: drop-shadow(0 0 18px rgba(255, 80, 98, 0.55));
@@ -349,14 +412,16 @@ function keyword(item) {
   white-space: nowrap;
 }
 
-/* Base structural dimensions for matchup block */
+/* Base structural dimensions for matchup block.
+   Body is 82px so that, with the ~23px the title tab floats above it, the card's
+   total visual height is 105px — exactly matching the participant cards. */
 .card-body {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 16px 22px;
-  height: 105px;
+  padding: 10px 22px;
+  height: 82px;
   box-sizing: border-box;
 }
 .vs {
@@ -371,31 +436,91 @@ function keyword(item) {
   filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
 }
 
-/* Participant Layout: Locked completely edge-to-edge inside the exact height mask */
+/* ---- Participant cards: name banner + the two team logos ----
+   A participant starts undecided, showing BOTH team logos split by a divider.
+   When they vote (choiceSide != null) the card narrows, the divider fades and
+   the non-chosen logo snakes off to the right while the chosen one glides to
+   the centre — leaving a single centred logo. */
 .card.participant {
+  /* Fixed card footprint */
   width: 127px;
+  height: 105px;
+  /* Same crimson texture as the comparing card */
   background: url('../assets/participants-bg.png') center / 100% 100% no-repeat;
-}
-.card.participant .card-body {
-  padding: 0;
-  height: 105px;           /* Match the comparing (matchup) card height */
-  box-sizing: border-box;
-  overflow: hidden;        /* Clones bounds clipping to stop image bursting */
-  border-radius: inherit;  /* Follows base card border-radius smoothly */
-}
-.photo-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;     /* Center the logo inside the card... */
-  justify-content: center; /* ...instead of stretching it edge-to-edge */
-  line-height: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;        /* Dual layout mask for custom image scaling layers */
+  border-radius: 4px;
+  overflow: hidden;             /* clips the big logos at both edges + the exiting loser */
+  display: flex;
+  flex-direction: column;
 }
 
-/* Keep the logo contained at its natural badge size (not bursting the frame) */
-.photo-wrap :deep(img) {
+/* Dark name banner sitting at the top of the white card */
+.pname {
+  flex: none;
+  height: 26px;
+  line-height: 26px;
+  background: #ffffff;
+  color: #0c0d10;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-align: center;
+  padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The white logo stage below the banner; fills the remaining card height so
+   participant cards line up with the matchup card (align-items: stretch). */
+.pbody {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;   /* crimson card texture shows through */
+  overflow: hidden;
+}
+.pslot {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  /* Slow, steady "walk" glide. transform and opacity share the SAME duration and
+     easing so the loser fades exactly as it finishes travelling — no early cut,
+     no break in the motion. ease-in-out gives the smooth start/stop of a walk. */
+  transition: transform 2.4s ease-in-out, opacity 2.4s ease-in-out;
+}
+.pdivider {
+  width: 1px;
+  align-self: stretch;
+  margin: 16px 0;
+  background: rgba(255, 255, 255, 0.28);
+  transition: opacity 0.35s ease;
+}
+
+/* Voted: divider gone, winner glides to the centre, loser slides out right. */
+.card.participant.voted .pdivider {
+  opacity: 0;
+}
+.card.participant.choice-left .slot-left {
+  transform: translateX(50%);   /* left-half centre → card centre */
+  z-index: 2;
+}
+.card.participant.choice-left .slot-right {
+  transform: translateX(140%);  /* exit right */
+  opacity: 0;
+}
+.card.participant.choice-right .slot-right {
+  transform: translateX(-50%);  /* right-half centre → card centre */
+  z-index: 2;
+}
+.card.participant.choice-right .slot-left {
+  transform: translateX(200%);  /* exit right, past the winner */
+  opacity: 0;
+}
+
+/* Keep logos contained at their natural badge size on the crimson stage. */
+.pbody :deep(img) {
   object-fit: contain !important;
 }
 
@@ -459,7 +584,7 @@ function keyword(item) {
   height: 132px;
   overflow: hidden;
   background: url('../assets/long-banner-bottom.png') center / 100% 100% no-repeat;
-  animation: bar-slide 0.75s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
+  animation: bar-slide 2.8s cubic-bezier(0.22, 1, 0.36, 1) 0.25s both;
 }
 .votebar-fill {
   position: absolute;
@@ -537,8 +662,24 @@ function keyword(item) {
 }
 
 /* ===================== Animation Timelines ===================== */
+/* Adding/removing a participant card: neighbours slide (FLIP) to open or close
+   the gap with no jump; a newly added card still rises in via card-rise, and a
+   removed one fades out without snapping the row. */
+.cardflow-move {
+  transition: transform 1.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.cardflow-leave-active {
+  transition: opacity 0.8s ease, transform 0.8s ease;
+  position: absolute;
+}
+.cardflow-leave-to {
+  opacity: 0;
+  transform: translateY(22px);
+}
+
 .team-swap-move {
-  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  /* same slow "walk" pace as the participant card snake animation */
+  transition: transform 2.4s ease-in-out;
 }
 .fade-enter-active,
 .fade-leave-active {

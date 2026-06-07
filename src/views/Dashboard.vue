@@ -56,12 +56,29 @@ async function resetVotes() {
   await loadDetail()
 }
 
+async function activatePoll() {
+  if (!selectedPoll.value || selectedPoll.value.isActive) return
+  await api.activatePoll(selectedId.value)
+  await refreshAll()
+}
+
+// Submit = deactivate the poll. The backend emits poll:ended (phase "results"),
+// which tells the overlay's CHAT card to snake the higher-scoring team to the
+// centre and drop the loser.
+async function submitPoll() {
+  if (!selectedPoll.value) return
+  if (!confirm('Submit & end this poll? The overlay CHAT card will lock to the winning team.')) return
+  await api.deactivatePoll(selectedId.value)
+  await refreshAll()
+}
+
 // ---- live updates ----
 const offFns = []
 onMounted(async () => {
   await refreshAll()
   offFns.push(
     on('poll:status', () => refreshAll()),
+    on('poll:ended', () => refreshAll()),
     on('poll:reset', () => loadDetail()),
     // overlay:flush fires every 5s when the buffer is written — pull fresh counts
     on('overlay:flush', () => loadDetail()),
@@ -99,7 +116,11 @@ onUnmounted(() => offFns.forEach((off) => off()))
               <span>🎮 {{ detail.totalStreamVotes }} stream votes</span>
             </div>
           </div>
-          <button class="ghost danger" @click="resetVotes">Reset votes</button>
+          <div class="head-actions">
+            <button v-if="!detail.isActive" class="activate" @click="activatePoll">▶ Activate poll</button>
+            <button v-if="detail.isActive" class="submit" @click="submitPoll">Submit (end poll)</button>
+            <button class="ghost danger" @click="resetVotes">Reset votes</button>
+          </div>
         </div>
 
         <ItemManager
@@ -151,6 +172,12 @@ onUnmounted(() => offFns.forEach((off) => off()))
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
 }
 h1 {
   margin: 0 0 6px;
@@ -226,6 +253,23 @@ h1 {
 }
 :deep(button.danger) {
   color: #ff8a96;
+}
+:deep(button.submit) {
+  background: var(--good);
+  color: #082611;
+  font-weight: 800;
+}
+/* Prominent activate CTA — bigger than the rest, shown when the poll is off */
+:deep(button.activate) {
+  background: var(--good);
+  color: #082611;
+  font-weight: 800;
+  font-size: 16px;
+  padding: 12px 24px;
+  box-shadow: 0 4px 14px rgba(46, 204, 113, 0.35);
+}
+:deep(button.activate:hover) {
+  filter: brightness(1.07);
 }
 :deep(button.ghost.warn) {
   background: var(--panel-2);
