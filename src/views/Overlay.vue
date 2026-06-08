@@ -502,10 +502,12 @@ const chatChoice = computed(() => {
   flex: 1;
   display: grid;
   place-items: center;
-  /* Slow, steady "walk" glide. transform and opacity share the SAME duration and
-     easing so the loser fades exactly as it finishes travelling — no early cut,
-     no break in the motion. ease-in-out gives the smooth start/stop of a walk. */
-  transition: transform 4.4s ease-in-out, opacity 4.4s ease-in-out;
+  /* Chess-piece slide (not a snake crawl): the logo glides smoothly across to
+     its new "square" and settles into place. The transform easing has a soft
+     overshoot so it lands with a brief settle, like a piece being pushed and set
+     down — deliberate but never choppy. Opacity eases out cleanly so the loser
+     fades as it leaves. */
+  transition: transform 1.7s cubic-bezier(0.32, 1.28, 0.5, 1), opacity 1.3s ease-out;
 }
 .pdivider {
   width: 1px;
