@@ -456,8 +456,9 @@ const chatChoice = computed(() => {
 /* ---- Participant cards: name banner + the two team logos ----
    A participant starts undecided, showing BOTH team logos split by a divider.
    When they vote (choiceSide != null) the card narrows, the divider fades and
-   the non-chosen logo snakes off to the right while the chosen one glides to
-   the centre — leaving a single centred logo. */
+   the non-chosen logo slides off its OWN side (left loser exits left, right
+   loser exits right) while the chosen one glides to the centre — leaving a
+   single centred logo. */
 .card.participant {
   /* Fixed card footprint */
   width: 127px;
@@ -534,7 +535,7 @@ const chatChoice = computed(() => {
   z-index: 2;
 }
 .card.participant.choice-right .slot-left {
-  transform: translateX(200%);  /* exit right, past the winner */
+  transform: translateX(-140%);  /* exit left — loser leaves on its own side */
   opacity: 0;
 }
 
