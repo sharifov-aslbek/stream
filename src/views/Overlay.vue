@@ -589,8 +589,8 @@ const chatChoice = computed(() => {
   gap: 16px;
 }
 .facecam {
-  width: 172px;
-  height: 132px;
+  width: 195px;
+  height: 131px;
   background: #fff;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
   border-radius: 0;
