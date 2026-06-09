@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { api } from '../services/api'
 import { on } from '../services/socket'
 import LogoBadge from '../components/LogoBadge.vue'
+import xxxImg from '../assets/xxx.png'
 
 const route = useRoute()
 const DEMO = {
@@ -212,7 +213,7 @@ const chatChoice = computed(() => {
             :url="teamA?.logoUrl"
             :size="66"
           />
-          <span class="vs">X</span>
+          <img class="vs vs-img" :src="xxxImg" alt="X" />
           <LogoBadge
             class="mark"
             :class="{ winnerMark: isWinner(teamB) }"
@@ -281,7 +282,7 @@ const chatChoice = computed(() => {
           </Transition>
           
           <span class="team">{{ keyword(teamA) }}</span>
-          <span class="vs big">X</span>
+          <img class="vs big vs-img" :src="xxxImg" alt="X" />
           <span class="team">{{ keyword(teamB) }}</span>
           
           <Transition name="fade" mode="out-in">
@@ -635,10 +636,18 @@ const chatChoice = computed(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: #deff00;
 }
 .vs.big {
   font-size: 60px;
   margin: 0 4px;
+}
+/* X image replacing the "X" text between logos */
+.vs-img {
+  width: 1em;
+  height: 1em;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 /* ===================== Live Alert Toast Notification ===================== */
