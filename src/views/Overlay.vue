@@ -344,7 +344,6 @@ const chatChoice = computed(() => {
 .card,
 .votebar {
   background: linear-gradient(135deg, #7a0718 0%, #940a23 100%);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.6);
   border-radius: 0;
 }
 
@@ -391,9 +390,6 @@ const chatChoice = computed(() => {
 .cardflow-appear-active:nth-child(4) { animation-delay: 0.54s; }
 .cardflow-appear-active:nth-child(5) { animation-delay: 0.72s; }
 
-.card.winner {
-  filter: drop-shadow(0 0 18px rgba(255, 80, 98, 0.55));
-}
 .card.winner::after {
   content: '';
   position: absolute;
