@@ -111,9 +111,15 @@ onUnmounted(() => {
 // View-Model Computations
 // ---------------------------------------------------------------------------
 
-// Stable Teams: Used for the bottom bar so left/right layout doesn't jump abruptly
-const teamA = computed(() => data.value.items[0] || null)
-const teamB = computed(() => data.value.items[1] || null)
+// Stable Teams: left/right layout is pinned to creation order (id), NOT the
+// array order the backend sends. The backend sorts /api/overlay items by score
+// (winner first), so trusting items[0]/items[1] would swap the two teams'
+// sides — and every participant/chat card's logos — without animation each time
+// the chat percentages shift the ranking. Pinning by id keeps the matchup,
+// banner, and cards seated; the winner is still derived separately below.
+const stableItems = computed(() => [...data.value.items].sort((a, b) => a.id - b.id))
+const teamA = computed(() => stableItems.value[0] || null)
+const teamB = computed(() => stableItems.value[1] || null)
 
 // Ranked Teams: Used for the dynamic matchup card (FLIP Animation).
 const rankedItems = computed(() =>
