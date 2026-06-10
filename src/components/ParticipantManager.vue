@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { api } from '../services/api'
 import LogoBadge from './LogoBadge.vue'
 
@@ -9,6 +9,12 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
 })
 const emit = defineEmits(['changed'])
+
+// Keep a stable order by creation (id ascending) so cards don't jump
+// around when a team is selected and the list is re-fetched.
+const orderedParticipants = computed(() =>
+  [...props.participants].sort((a, b) => a.id - b.id)
+)
 
 const name = ref('')
 const logo = ref(null)
@@ -62,7 +68,7 @@ async function remove(p) {
     </form>
 
     <div class="grid">
-      <div v-for="p in participants" :key="p.id" class="card">
+      <div v-for="p in orderedParticipants" :key="p.id" class="card">
         <button class="ghost danger x" @click="remove(p)">✕</button>
         <LogoBadge v-if="p.logoUrl" :url="p.logoUrl" :size="46" class="ib" />
         <strong class="pname">{{ p.participantName }}</strong>
