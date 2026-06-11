@@ -33,22 +33,12 @@ const data = ref({
   recentVote: null,
 })
 
-const recentFlash = ref(null)
-let flashTimer = null
-
 async function refresh() {
   try {
     data.value = await api.getOverlay()
   } catch (e) {
     console.warn('overlay refresh failed', e)
   }
-}
-
-function showFlash(vote) {
-  if (!vote) return
-  recentFlash.value = vote
-  clearTimeout(flashTimer)
-  flashTimer = setTimeout(() => (recentFlash.value = null), 4000)
 }
 
 const offFns = []
@@ -78,21 +68,12 @@ onMounted(async () => {
           return u ? { ...it, chatPercentage: u.chatPercentage } : it
         })
       }
-      showFlash({
-        authorName: payload.authorName,
-        pollItemName: payload.votedItemName,
-        pollItemLogoUrl:
-          payload.items?.find((i) => i.name === payload.votedItemName)?.logoUrl || '',
-      })
     }),
     on('poll:status', () => refresh()),
     // poll:ended carries the full results-phase payload directly; refresh() pulls
     // the same shape from /api/overlay so the overlay flips to the results view.
     on('poll:ended', () => refresh()),
-    on('poll:reset', () => {
-      recentFlash.value = null
-      refresh()
-    }),
+    on('poll:reset', () => refresh()),
     on('overlay:flush', () => refresh()),
     on('connect', () => refresh())
   )
@@ -103,7 +84,6 @@ onMounted(async () => {
 onUnmounted(() => {
   document.body.classList.remove('overlay-mode')
   offFns.forEach((off) => off())
-  clearTimeout(flashTimer)
   clearInterval(pollTimer)
 })
 
@@ -310,16 +290,6 @@ const chatChoice = computed(() => {
         </div>
       </div>
     </div>
-
-    <transition name="flash">
-      <div v-if="recentFlash" class="flash-toast">
-        <LogoBadge :url="recentFlash.pollItemLogoUrl" :size="34" />
-        <div class="flash-text">
-          <strong>{{ recentFlash.authorName }}</strong>
-          <span>{{ recentFlash.pollItemName }}</span>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -661,41 +631,6 @@ const chatChoice = computed(() => {
   vertical-align: middle;
 }
 
-/* ===================== Live Alert Toast Notification ===================== */
-.flash-toast {
-  position: absolute;
-  left: 120px;
-  bottom: 312px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
-  background: rgba(12, 13, 16, 0.92);
-  border-left: 3px solid #ff5062;
-  font-family: 'Orbitron', sans-serif;
-  border-radius: 0 4px 4px 0;
-}
-.flash-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.2;
-}
-.flash-text strong {
-  font-size: 14px;
-}
-.flash-text span {
-  font-size: 12px;
-  color: #ffb3bb;
-}
-.flash-enter-active,
-.flash-leave-active {
-  transition: all 2.35s ease;
-}
-.flash-enter-from,
-.flash-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
 
 /* ===================== Animation Timelines ===================== */
 /* Adding/removing a participant card: neighbours slide (FLIP) to open or close
