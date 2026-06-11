@@ -171,9 +171,14 @@ function score(item) {
   return scoreValue(item)
 }
 
+// Scoring drives the winner glow on the matchup card and the team logo shown on
+// undecided participant cards. It must NOT include chatPercentage: the live chat
+// percentages flow in over poll:vote and would otherwise re-rank the teams on
+// every message, flickering the top cards. Chat % belongs only to the bottom
+// votebar — the top cards stay fixed against it.
 function scoreValue(item) {
   if (!item) return 0
-  return item.totalScore ?? item.streamVotesCount ?? item.votesCount ?? item.chatPercentage ?? 0
+  return item.totalScore ?? item.streamVotesCount ?? item.votesCount ?? 0
 }
 
 function isWinner(item) {
